@@ -29,11 +29,7 @@ jobs:
         ssh -i private_key.pem -o StrictHostKeyChecking=no ${USER}@${HOST} << 'EOF'
           cd /home/ubuntu/ci-cd-test
 
-          # Generate model.pkl before Docker build
-          pip3 install scikit-learn joblib --quiet
-          python3 train.py
-
-          # Build Docker image
+          # Build Docker image (trains model inside container)
           docker build -t ci-cd-test .
           
           # Stop old container (if exists)
