@@ -1,0 +1,44 @@
+name: Deploy to AWS EC2
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Deploy to EC2
+      env:
+        PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
+        HOST: ${{ secrets.EC2_HOST }}
+        USER: ${{ secrets.EC2_USER }}
+      run: |
+        # Save SSH key
+        echo "$PRIVATE_KEY" > private_key.pem
+        chmod 600 private_key.pem
+        
+        # Copy files to EC2
+        scp -i private_key.pem -o StrictHostKeyChecking=no -r * ${USER}@${HOST}:/home/ubuntu/ci-cd-test/
+        
+        # SSH into EC2 and deploy
+        ssh -i private_key.pem -o StrictHostKeyChecking=no ${USER}@${HOST} << 'EOF'
+          cd /home/ubuntu/ci-cd-test
+          
+          # Build Docker image
+          docker build -t ci-cd-test .
+          
+          # Stop old container (if exists)
+          docker stop ci-cd-test-container || true
+          docker rm ci-cd-test-container || true
+          
+          # Run new container
+          docker run -d --name ci-cd-test-container -p 8000:8000 ci-cd-test
+          
+          # Show logs
+          docker logs ci-cd-test-container
+        EOF
