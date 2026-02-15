@@ -22,15 +22,16 @@ jobs:
         echo "$PRIVATE_KEY" > private_key.pem
         chmod 600 private_key.pem
         
-        # Copy files to EC2
-        scp -i private_key.pem -o StrictHostKeyChecking=no -r * ${USER}@${HOST}:/home/ubuntu/ci-cd-test/
-        
+        # Clean old files and copy fresh code to EC2
+        ssh -i private_key.pem -o StrictHostKeyChecking=no ${USER}@${HOST} "rm -rf /home/ubuntu/ci-cd-test && mkdir -p /home/ubuntu/ci-cd-test"
+        scp -i private_key.pem -o StrictHostKeyChecking=no -r ./* ${USER}@${HOST}:/home/ubuntu/ci-cd-test/
+
         # SSH into EC2 and deploy
         ssh -i private_key.pem -o StrictHostKeyChecking=no ${USER}@${HOST} << 'EOF'
           cd /home/ubuntu/ci-cd-test
 
           # Build Docker image (trains model inside container)
-          docker build -t ci-cd-test .
+          docker build --no-cache -t ci-cd-test .
           
           # Stop old container (if exists)
           docker stop ci-cd-test-container || true
